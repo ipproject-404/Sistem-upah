@@ -30,7 +30,7 @@ try {
         PDO::ATTR_EMULATE_PREPARES => false,
     ]);
     
-     echo "Koneksi ke Supabase berhasil!";
+     //echo "Koneksi ke Supabase berhasil!";
     
 } catch (PDOException $e) {
     die("Koneksi database gagal: " . $e->getMessage());
