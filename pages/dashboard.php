@@ -1,35 +1,46 @@
 <?php
+session_start();
 require_once '../config/database.php';
+
+if (!isset($_SESSION['divisi']) || $_SESSION['divisi'] !== 'produksi') {
+    header("Location: ../index.php");
+    exit;
+}
+
 require_once '../includes/header.php';
 require_once '../includes/navbar.php';
 
-$total_karyawan = 0; 
-$transaksi_hari_ini = 0; 
-$lembur_hari_ini = 0; 
+$total_transaksi = 0; 
+$total_kg_hari_ini = 0; 
+$karyawan_aktif_hari_ini = 0;
 
 try {
-    $stmtKaryawan = $pdo->query("SELECT COUNT(*) as total FROM karyawan");
-    $total_karyawan = $stmtKaryawan->fetch()['total'];
+    $stmt1 = $pdo->query("SELECT COUNT(*) as total FROM transaksi_timbang WHERE DATE(created_at) = CURRENT_DATE");
+    $total_transaksi = $stmt1->fetch()['total'] ?? 0;
 
-    $stmtTimbang = $pdo->query("SELECT COUNT(*) as total FROM transaksi_timbang WHERE DATE(created_at) = CURRENT_DATE");
-    $transaksi_hari_ini = $stmtTimbang->fetch()['total'];
+    $stmt2 = $pdo->query("SELECT SUM(berat) as total_kg FROM transaksi_timbang WHERE DATE(created_at) = CURRENT_DATE");
+    $total_kg_hari_ini = $stmt2->fetch()['total_kg'] ?? 0;
 
-    $stmtLembur = $pdo->query("SELECT COUNT(*) as total FROM absensi_lembur WHERE DATE(created_at) = CURRENT_DATE");
-    $lembur_hari_ini = $stmtLembur->fetch()['total'];
+    $stmt3 = $pdo->query("SELECT COUNT(DISTINCT karyawan_id) as total_orang FROM transaksi_timbang WHERE DATE(created_at) = CURRENT_DATE");
+    $karyawan_aktif_hari_ini = $stmt3->fetch()['total_orang'] ?? 0;
 
 } catch (PDOException $e) {
-    echo '<div class="container mt-4"><div class="alert alert-warning">Gagal mengambil data statistik: ' . $e->getMessage() . '</div></div>';
+    echo '<div class="container mt-4"><div class="alert alert-warning">Data belum bisa ditarik: Pastikan tabel transaksi_timbang sudah memiliki kolom created_at, berat, dan karyawan_id.</div></div>';
 }
-
 ?>
 
 <div class="container mt-4">
     <div class="row mb-4">
         <div class="col-12">
             <div class="card border-0 shadow-sm" style="border-left: 5px solid #198754 !important;">
-                <div class="card-body py-4">
-                    <h3 class="text-hijau fw-bold">Selamat Datang di Dashboard Admin</h3>
-                    <p class="text-muted mb-0">Kelola operasional penimbangan udang dan absensi lembur karyawan dengan cepat dan transparan.</p>
+                <div class="card-body py-4 d-flex justify-content-between align-items-center">
+                    <div>
+                        <h3 class="text-hijau fw-bold mb-1">Dashboard Produksi</h3>
+                        <p class="text-muted mb-0">Pantau pergerakan hasil kupas udang secara real-time hari ini.</p>
+                    </div>
+                    <div>
+                        <span class="badge bg-light text-hijau border p-2 fs-6">📅 <?= date('d M Y'); ?></span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -39,51 +50,42 @@ try {
         <div class="col-md-4 mb-3">
             <div class="card border-0 shadow-sm text-center py-4 h-100">
                 <div class="card-body">
-                    <h1 class="display-4 fw-bold text-hijau"><?= $total_karyawan ?></h1>
-                    <p class="text-muted mb-0">Total Karyawan Aktif</p>
+                    <h1 class="display-5 fw-bold text-hijau"><?= number_format($total_kg_hari_ini, 2, ',', '.') ?> Kg</h1>
+                    <p class="text-muted mb-0">Total Setoran Udang Hari Ini</p>
                 </div>
             </div>
         </div>
         <div class="col-md-4 mb-3">
             <div class="card border-0 shadow-sm text-center py-4 h-100">
                 <div class="card-body">
-                    <h1 class="display-4 fw-bold text-hijau"><?= $transaksi_hari_ini ?></h1>
-                    <p class="text-muted mb-0">Transaksi Timbang Hari Ini</p>
+                    <h1 class="display-5 fw-bold text-hijau"><?= $total_transaksi ?></h1>
+                    <p class="text-muted mb-0">Antrean Ditimbang Hari Ini</p>
                 </div>
             </div>
         </div>
         <div class="col-md-4 mb-3">
             <div class="card border-0 shadow-sm text-center py-4 h-100">
                 <div class="card-body">
-                    <h1 class="display-4 fw-bold text-hijau"><?= $lembur_hari_ini ?></h1>
-                    <p class="text-muted mb-0">Karyawan Lembur Hari Ini</p>
+                    <h1 class="display-5 fw-bold text-hijau"><?= $karyawan_aktif_hari_ini ?></h1>
+                    <p class="text-muted mb-0">Karyawan Menyetor Hari Ini</p>
                 </div>
             </div>
         </div>
     </div>
 
     <div class="row">
-        <div class="col-md-6 mb-3">
-            <div class="card border-0 shadow-sm h-100">
-                <div class="card-body text-center p-4">
-                    <h5 class="fw-bold text-hijau mb-3">Operasional Borongan</h5>
-                    <p class="text-muted mb-4">Buka halaman kasir penimbangan untuk memproses upah harian kupas udang karyawan.</p>
-                    <a href="timbangan.php" class="btn btn-hijau px-4 py-2 w-75 fw-bold">Mulai Penimbangan 🦐</a>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-6 mb-3">
-            <div class="card border-0 shadow-sm h-100">
-                <div class="card-body text-center p-4">
-                    <h5 class="fw-bold text-hijau mb-3">Operasional Lembur</h5>
-                    <p class="text-muted mb-4">Buka halaman absensi untuk melakukan scan masuk (Clock-In) dan pulang (Clock-Out) lembur.</p>
-                    <a href="lembur.php" class="btn btn-outline-success px-4 py-2 w-75 fw-bold">Catat Absensi Lembur ⏱️</a>
+        <div class="col-md-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body text-center p-5">
+                    <h4 class="fw-bold text-hijau mb-3">Stasiun Penimbangan Timbangan</h4>
+                    <p class="text-muted mb-4 w-75 mx-auto">Pastikan scanner QR sudah terhubung dengan laptop/komputer. Karyawan hanya perlu mengarahkan QR dari HP ke scanner, dan sistem akan mencatat otomatis.</p>
+                    <a href="timbangan.php" class="btn btn-hijau btn-lg px-5 py-3 fw-bold shadow-sm">
+                        🐟 Buka Aplikasi Kasir Timbangan
+                    </a>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
-<?php
-require_once '../includes/footer.php';
-?>
+<?php require_once '../includes/footer.php'; ?>
